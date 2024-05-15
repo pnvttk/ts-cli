@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the file where entries will be stored
-[ ! -f "~/timesheet.txt" ] &&	touch ~/timesheet.txt
+[ ! -f "$HOME/timesheet.txt" ] &&	touch "$HOME/timesheet.txt"
 FILE="$HOME/timesheet.txt"
 
 # Function to add an entry with a timestamp
@@ -30,7 +30,7 @@ show_entries() {
     fi
 }
 
-# Function to delete an entry by index or timestamp
+# Function to delete an entry by index, timestamp, or delete all entries
 delete_entry() {
     local option=$1
     local value=$2
@@ -52,11 +52,36 @@ delete_entry() {
             fi
             # Delete entries with the specified timestamp
             sed -i.bak "/^$value/d" "$FILE" && echo "Deleted entries with timestamp $value from $FILE"
-				elif [ "$option" == "-a" ]; then
-            sed -i.bak "d" "$FILE" && echo "Deleted entries file from $FILE"
+        elif [ "$option" == "-a" ]; then
+            # Delete all entries
+            > "$FILE" && echo "Deleted all entries from $FILE"
         else
-            echo "Invalid delete option. Use -i for index, -t for timestamp or -a for all."
+            echo "Invalid delete option. Use -i for index, -t for timestamp, or -a for all."
         fi
+    else
+        echo "$FILE not found."
+    fi
+}
+
+# Function to edit an entry's message by index
+edit_entry() {
+    local index=$1
+    local new_message=$2
+    # Check if the file exists
+    if [ -f "$FILE" ]; then
+        # Validate the index value
+        if ! [[ "$index" =~ ^[0-9]+$ ]]; then
+            echo "Invalid index: $index"
+            return 1
+        fi
+        # Get the current entry at the specified index
+        local current_entry=$(sed "${index}q;d" "$FILE")
+        # Extract the timestamp from the current entry
+        local timestamp=$(echo "$current_entry" | cut -d' ' -f1)
+        # Replace only the message part of the current entry with the new message
+        local new_entry="$timestamp $new_message"
+        # Replace the current entry with the new entry
+        sed -i.bak "${index}s/.*/$new_entry/" "$FILE" && echo "Updated entry at index $index: $current_entry -> $new_entry"
     else
         echo "$FILE not found."
     fi
@@ -64,14 +89,15 @@ delete_entry() {
 
 # Function to print the help message
 print_help() {
-    echo "Usage: timesheet {-m \"message\" | -a | -d [-i index | -t timestamp] | -h}"
+    echo "Usage: timesheet {-m \"message\" | -a | -d [-i index | -t timestamp | -a] | -e index \"new_message\" | -h}"
     echo
     echo "Options:"
     echo "  -m, --message      Add a new entry with a timestamp."
-    echo "  -a, --all          Show all entries or an option for delete all entries"
-    echo "  -d, --delete       Delete an entry by index or timestamp."
+    echo "  -a, --all          Show all entries or an option for delete all entries."
+    echo "  -d, --delete       Delete an entry by index, timestamp, or all entries."
     echo "  -i, --index        Specify the index for deletion."
     echo "  -t, --timestamp    Specify the timestamp for deletion."
+    echo "  -e, --edit         Edit an entry's message by index."
     echo "  -h, --help         Show this help message."
     echo
     echo "Examples:"
@@ -80,6 +106,7 @@ print_help() {
     echo "  timesheet -d -a              	 Delete all the entries."
     echo "  timesheet -d -i 2              Delete the entry at index 2."
     echo "  timesheet -d -t 20230514153000 Delete entries with timestamp 20230514153000."
+    echo "  timesheet -e 2 \"new message\"  Edit the message at index 2."
 }
 
 # Main logic to parse command-line arguments
@@ -102,15 +129,18 @@ case $1 in
                 shift
                 delete_entry -t "$1"
                 ;;
-						-a|--all)
-								shift
-								delete_entry -a
-								;;
+            -a|--all)
+                delete_entry -a
+                ;;
             *)
                 echo "Error: Missing or invalid argument for delete."
                 print_help
                 ;;
         esac
+        ;;
+    -e|--edit)
+        shift
+        edit_entry "$1" "$2"
         ;;
     -h|--help)
         print_help
