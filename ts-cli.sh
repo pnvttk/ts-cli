@@ -23,8 +23,20 @@ add_entry() {
 show_entries() {
     # Check if the file exists
     if [ -f "$FILE" ]; then
-        # Print the file content with line numbers
-        nl -w2 -s". " "$FILE"
+        # Initialize line counter
+        line_number=1
+        # Read the file line by line
+        while IFS= read -r line; do
+            # Check if the line starts with a timestamp
+            if [[ $line =~ ^[0-9]{14}: ]]; then
+                # If it does, print the line number followed by the line
+                printf "%2d. %s\n" "$line_number" "$line"
+                ((line_number++))
+            else
+                # If it doesn't, print the line directly without an index
+                echo "   $line"
+            fi
+        done < "$FILE"
     else
         echo "$FILE not found."
     fi
@@ -79,7 +91,7 @@ edit_entry() {
         # Extract the timestamp from the current entry
         local timestamp=$(echo "$current_entry" | cut -d' ' -f1)
         # Replace only the message part of the current entry with the new message
-        local new_entry="$timestamp $new_message"
+        local new_entry="$timestamp: $new_message"
         # Replace the current entry with the new entry
         sed -i.bak "${index}s/.*/$new_entry/" "$FILE" && echo "Updated entry at index $index: $current_entry -> $new_entry"
     else
