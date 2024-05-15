@@ -6,10 +6,11 @@ FILE="$HOME/timesheet.txt"
 
 # Function to add an entry with a timestamp
 add_entry() {
-    local entry="$*"
-    # Check if the entry is empty
+    # Trim leading and trailing whitespace characters from the entry
+    local entry="$(echo -e "$*" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+    # Check if the entry is empty after trimming
     if [[ -z "$entry" ]]; then
-        echo "Error: No entry provided."
+        echo "Error: No meaningful entry provided."
         return 1
     fi
     # Get the current timestamp in the format YYYYMMDDHHMMSS
